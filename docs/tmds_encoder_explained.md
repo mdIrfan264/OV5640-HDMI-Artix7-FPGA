@@ -190,4 +190,65 @@ A 10-bit word that:
 
 ---
 
+## 🚦 **Stage 3 – Registering the Final TMDS Output**
+
+---
+
+### 🎯 **Goal**:
+
+In this stage, we **register** (i.e., store) the final 10-bit TMDS-encoded output so it's ready to be serialized and sent over the HDMI lines using the **faster Serial Clock**.
+
+This stage doesn’t perform **new encoding logic**. Instead, it ensures:
+
+* Proper timing
+* Glitch-free handoff from encoding logic to serializer
+* Clean output synchronization with `PixelClk`
+
+---
+
+## 🧠 Why register again?
+
+The TMDS output (`pDataOutRaw`) is computed in Stage 2, but:
+
+* It may be generated **asynchronously** with respect to `PixelClk`
+* Registering it ensures that output changes happen **only on clock edges** — this is essential for **FPGA timing** and avoids metastability or glitches.
+
+---
+
+## 🔁 What happens in Stage 3?
+
+```verilog
+always @(posedge PixelClk) begin
+    cnt_t_3       <= cnt_t_2;       // update DC balance counter
+    pDataOutRaw   <= q_out_2;       // latch final 10-bit TMDS output
+end
+```
+
+* `cnt_t_3` stores the updated DC bias for the next pixel.
+* `pDataOutRaw` holds the final 10-bit output (from Stage 2).
+* This output will be sent bit-by-bit via a serializer (e.g., OSERDES).
+
+---
+
+## 🛠️ Summary of Stage 3:
+
+| Component     | Purpose                              |
+| ------------- | ------------------------------------ |
+| `cnt_t_3`     | Holds updated DC bias for next cycle |
+| `pDataOutRaw` | Final encoded 10-bit TMDS output     |
+| Clock used    | `PixelClk` (same as earlier stages)  |
+
+---
+
+### 📤 What happens after Stage 3?
+
+After this, the 10-bit TMDS word goes to a **serializer** (like OSERDES in Xilinx FPGAs), where:
+
+* Bits are shifted out **serially**
+* At **5x or 10x** the pixel clock speed using `SerialClk`
+* Sent through differential TMDS pairs to HDMI
+
+---
+
+
 
